@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/member/:code",
+      "destination": "/api/member"
+    }
+  ]
+}

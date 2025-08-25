@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TMSU - Evaluation System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --color-red: #d92525; --color-red-dark: #b81e1e; --color-black: #121212;
+            --color-white: #ffffff; --font-family: 'Cairo', sans-serif; --glow-color: rgba(217, 37, 37, 0.7 );
+        }
+        html[data-theme="light"] { --bg: #f0f2f5; --font: #1c1e21; --card-bg: var(--color-white); --border: #e4e6e8; --card-shadow: 0 8px 32px rgba(0,0,0,0.1); }
+        html[data-theme="dark"] { --bg: var(--color-black); --font: #e4e6eb; --card-bg: #1e1e1e; --border: #3a3b3c; --card-shadow: 0 8px 32px rgba(217, 37, 37, 0.2); }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { min-height: 100%; }
+        body {
+            font-family: var(--font-family); background-color: var(--bg); color: var(--font);
+            transition: background-color 0.3s, color 0.3s;
+            display: flex; align-items: center; justify-content: center;
+            padding: 40px 20px;
+        }
+        #background-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; }
+        .main-content { width: 100%; max-width: 800px; position: relative; z-index: 1; }
+        .header { text-align: center; margin-bottom: 40px; display: flex; align-items: center; justify-content: center; gap: 40px; }
+        .header-logo { width: 130px; height: 130px; object-fit: contain; border-radius: 8px; background-color: white; }
+        .header h1 { font-size: 2.8em; font-weight: 700; color: var(--color-red); line-height: 1.2; }
+        #results-container { display: none; width: 100%; max-width: 500px; margin: 0 auto; }
+        .search-box { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; padding: 25px; box-shadow: var(--card-shadow); backdrop-filter: blur(10px); max-width: 500px; margin: 0 auto; }
+        #code-input { width: 100%; padding: 14px; font-size: 16px; border-radius: 8px; text-align: center; border: 1px solid var(--border); background-color: var(--bg); color: var(--font); }
+        .button-group { display: flex; flex-direction: column; gap: 10px; margin-top: 15px; }
+        .btn { width: 100%; padding: 14px; font-size: 18px; font-weight: 700; border-radius: 8px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none; }
+        .btn-primary { color: var(--color-white); background-color: var(--color-red); border: none; }
+        .btn-primary:hover { background-color: var(--color-red-dark); }
+        .btn-secondary { color: var(--color-red); background-color: transparent; border: 2px solid var(--color-red); }
+        .btn-secondary:hover { background-color: var(--color-red); color: var(--color-white); }
+        #loader-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s; backdrop-filter: blur(5px); }
+        #loader-container.visible { opacity: 1; visibility: visible; }
+        .scanner { width: 200px; height: 160px; border: 3px solid var(--color-red); border-radius: 10px; position: relative; overflow: hidden; box-shadow: 0 0 20px var(--glow-color); }
+        .scanner::after { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 5px; background: linear-gradient(90deg, transparent, var(--glow-color), transparent); animation: scan 2s linear infinite; }
+        @keyframes scan { 0% { top: 0; } 100% { top: 155px; } }
+        #loader-text { margin-top: 20px; font-size: 1.2em; color: var(--glow-color); letter-spacing: 2px; text-transform: uppercase; }
+        .profile-card { background: var(--card-bg); border-radius: 24px; box-shadow: var(--card-shadow); width: 100%; overflow: hidden; animation: slide-up 0.6s ease-out forwards; opacity: 0; transform: translateY(20px); }
+        @keyframes slide-up { to { opacity: 1; transform: translateY(0); } }
+        .card-header { height: 220px; position: relative; background-size: cover; background-position: center; cursor: pointer; display: flex; flex-direction: column; justify-content: flex-end; padding: 20px; color: white; text-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+        .card-header::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 50%); }
+        .card-header .profile-info { position: relative; z-index: 2; }
+        .card-header h2 { font-size: 2.5em; font-weight: 900; margin: 0; line-height: 1.1; }
+        .card-header p { font-size: 1.4em; font-weight: 700; color: var(--color-white); opacity: 0.9; margin: 0; }
+        .card-body { padding: 25px; }
+        .kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 25px; }
+        .kpi-card { background: var(--bg); padding: 15px; border-radius: 12px; border: 1px solid var(--border); text-align: center; }
+        .kpi-card .icon { font-size: 1.8em; color: var(--color-red); margin-bottom: 8px; }
+        .kpi-card .title { font-size: 0.9em; opacity: 0.7; margin-bottom: 5px; }
+        .kpi-card .value { font-size: 1.5em; font-weight: 700; }
+        .details-section { margin-top: 20px; }
+        .accordion-header { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 1.1em; font-weight: 700; margin-bottom: 10px; }
+        .accordion-header .icon { transition: transform 0.3s; }
+        .accordion-header.active .icon { transform: rotate(180deg); }
+        .accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.4s ease-out; background: var(--bg); border-radius: 10px; }
+        .details-table { width: 100%; border-collapse: collapse; }
+        .details-table tr { border-bottom: 1px solid var(--border); }
+        .details-table tr:last-child { border-bottom: none; }
+        .details-table td { padding: 12px 15px; text-align: left; }
+        .details-table td:first-child { opacity: 0.8; }
+        .details-table td:last-child { font-weight: 700; text-align: right; }
+        .comment-box { padding: 15px; text-align: left; }
+        .comment-box p { margin: 0; line-height: 1.6; }
+        .comment-box .no-comment { opacity: 0.5; font-style: italic; }
+        .card-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 25px; }
+        .card-actions .btn { padding: 10px 15px; font-size: 14px; flex-grow: 1; }
+        .btn-new-search { color: var(--font); background-color: transparent; border: 2px solid var(--border); }
+        .btn-new-search:hover { background-color: var(--border); }
+        .top-controls { position: fixed; top: 15px; right: 15px; z-index: 10; display: flex; gap: 10px; }
+        .control-btn { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border); background: var(--card-bg); color: var(--font); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+        #lightbox { position: fixed; z-index: 1000; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease; backdrop-filter: blur(5px); }
+        #lightbox.visible { opacity: 1; visibility: visible; }
+        #lightbox img { max-width: 90%; max-height: 90%; border-radius: 8px; box-shadow: 0 0 40px rgba(0,0,0,0.5); transform: scale(0.8); transition: transform 0.3s ease; }
+        #lightbox.visible img { transform: scale(1); }
+    </style>
+</head>
+<body>
+    <canvas id="background-canvas"></canvas>
+    <div id="loader-container"><div class="scanner"></div><p id="loader-text">Analyzing Data</p></div>
+    <div class="top-controls"><button id="theme-toggle" class="control-btn" title="Toggle Theme"><i class="fas fa-moon"></i></button></div>
+    <div class="main-content" id="main-content">
+        <div class="header">
+            <img src="https://lh3.googleusercontent.com/d/10Yu16kVso0XYohV6jBwkiRhrkFwxvRX8" alt="Logo 1" class="header-logo">
+            <h1>Tahya Misr Student Union</h1>
+            <img src="https://lh3.googleusercontent.com/d/10ggZb3hhefbbWaa3mqLqdvxlY0Dmy6Fj" alt="Logo 2" class="header-logo">
+        </div>
+        <div class="search-box">
+            <input type="text" id="code-input" placeholder="Enter Member ID">
+            <div class="button-group">
+                <button id="search-btn" class="btn btn-primary"><i class="fas fa-search"></i> Analyze</button>
+                <a href="https://docs.google.com/forms/d/e/1FAIpQLSfh9MTlGCh4YNmFazSKapdDm_ISOLVIghNH2Tqu3_zrdxUBmQ/viewform?usp=header" target="_blank" class="btn btn-secondary"><i class="fas fa-exclamation-triangle"></i> Submit a Complaint</a>
+            </div>
+        </div>
+    </div>
+    <div id="results-container"></div>
+    <div id="lightbox"><img id="lightbox-img" src="" alt="Full-size member photo"></div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function( ) {
+            const mainContent = document.getElementById('main-content');
+            const codeInput = document.getElementById('code-input');
+            const searchBtn = document.getElementById('search-btn');
+            const loaderContainer = document.getElementById('loader-container');
+            const resultsContainer = document.getElementById('results-container');
+            const themeToggle = document.getElementById('theme-toggle');
+            const lightbox = document.getElementById('lightbox');
+            const lightboxImg = document.getElementById('lightbox-img');
+            let currentMemberCode = null;
+
+            async function handleSearch() {
+                currentMemberCode = codeInput.value.trim();
+                if (!currentMemberCode) { alert('Please enter a Member ID.'); return; }
+                
+                loaderContainer.classList.add('visible');
+                mainContent.style.display = 'none';
+                resultsContainer.style.display = 'none';
+                resultsContainer.innerHTML = '';
+
+                try {
+                    // --- الكود المصحح والنهائي لاستدعاء الـ API ---
+                    const response = await fetch(`/api/member?code=${currentMemberCode}`);
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.message || 'Member not found');
+                    }
+                    const res = await response.json();
+                    displayResults(res);
+                } catch (error) {
+                    displayError(error);
+                }
+            }
+            
+            function resetToSearch() {
+                resultsContainer.style.display = 'none';
+                mainContent.style.display = 'block';
+                codeInput.value = '';
+                currentMemberCode = null;
+            }
+
+            function displayResults(res) {
+                loaderContainer.classList.remove('visible');
+                if (!res.found || !res.data) {
+                    alert(res.message || 'Member ID not found.');
+                    resetToSearch();
+                    return;
+                }
+                
+                const member = res.data;
+                const photoUrl = member['DirectPhotoLink'];
+
+                let performanceHtml = '';
+                const performanceKeys = ['Quality of the task', 'Quantity of the task', 'Attendance', 'Communication', 'Flexibility', 'Teamwork', 'Technical Knowledge', 'Bonus'];
+                performanceKeys.forEach(key => {
+                    const value = member[key] || '';
+                    performanceHtml += `<tr><td>${key}</td><td>${value}</td></tr>`;
+                });
+
+                let adminHtml = '';
+                const adminKeys = ['Freezing', 'Attention', 'Alarm'];
+                adminKeys.forEach(key => {
+                    if (member[key] !== undefined && String(member[key]).trim() !== '') {
+                        adminHtml += `<tr><td>${key}</td><td>${member[key]}</td></tr>`;
+                    }
+                });
+
+                const commentText = (member.Comment && String(member.Comment).trim() !== '') 
+                    ? `<p>${member.Comment}</p>`
+                    : '<p class="no-comment">No comment provided.</p>';
+
+                resultsContainer.innerHTML = `
+                    <div class="profile-card">
+                        <div class="card-header" id="card-header" style="background-image: url('${photoUrl || ''}')">
+                            <div class="profile-info">
+                                <h2>${member.Name || 'Unknown'}</h2>
+                                <p>${member.Committee || 'No Committee'}</p>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="kpi-grid">
+                                <div class="kpi-card"><div class="icon"><i class="fas fa-poll"></i></div><div class="title">Appreciation</div><div class="value">${member.Appreciation || 'N/A'}</div></div>
+                                <div class="kpi-card"><div class="icon"><i class="fas fa-check-circle"></i></div><div class="title">Final Status</div><div class="value">${member.Status || 'N/A'}</div></div>
+                                <div class="kpi-card"><div class="icon"><i class="fas fa-star"></i></div><div class="title">Total Score</div><div class="value">${member.Total || 0}</div></div>
+                                <div class="kpi-card"><div class="icon"><i class="fas fa-percentage"></i></div><div class="title">Percentage</div><div class="value">${member['%'] || '0'}%</div></div>
+                            </div>
+                            <div class="details-section">
+                                <div class="accordion-item"><div class="accordion-header"><span><i class="fas fa-tasks"></i> Performance Evaluation</span><i class="fas fa-chevron-down icon"></i></div><div class="accordion-content"><table class="details-table">${performanceHtml}</table></div></div>
+                                ${adminHtml ? `<div class="accordion-item"><div class="accordion-header"><span><i class="fas fa-user-shield"></i> Administrative Status</span><i class="fas fa-chevron-down icon"></i></div><div class="accordion-content"><table class="details-table">${adminHtml}</table></div></div>` : ''}
+                                <div class="accordion-item"><div class="accordion-header"><span><i class="fas fa-comment-dots"></i> Final Comment</span><i class="fas fa-chevron-down icon"></i></div><div class="accordion-content"><div class="comment-box">${commentText}</div></div></div>
+                            </div>
+                            <div class="card-actions">
+                                <button id="new-search-btn" class="btn btn-new-search"><i class="fas fa-search"></i> New Search</button>
+                                <a href="https://docs.google.com/forms/d/e/1FAIpQLSfh9MTlGCh4YNmFazSKapdDm_ISOLVIghNH2Tqu3_zrdxUBmQ/viewform?usp=header" target="_blank" class="btn btn-secondary"><i class="fas fa-exclamation-triangle"></i> Complaint</a>
+                            </div>
+                        </div>
+                    </div>`;
+                
+                resultsContainer.style.display = 'block';
+                document.getElementById('new-search-btn' ).addEventListener('click', resetToSearch);
+                document.querySelectorAll('.accordion-header').forEach(header => {
+                    header.addEventListener('click', () => {
+                        const content = header.nextElementSibling;
+                        header.classList.toggle('active');
+                        if (content.style.maxHeight) { content.style.maxHeight = null; } else { content.style.maxHeight = content.scrollHeight + "px"; }
+                    });
+                });
+                const cardHeader = document.getElementById('card-header');
+                if (photoUrl && String(photoUrl).trim() !== '') {
+                    cardHeader.addEventListener('click', () => {
+                        lightboxImg.src = photoUrl;
+                        lightbox.classList.add('visible');
+                    });
+                }
+            }
+
+            function displayError(error) {
+                loaderContainer.classList.remove('visible');
+                resetToSearch();
+                alert(`An error occurred: ${error.message}`);
+            }
+
+            function applyTheme(theme) {
+                document.documentElement.setAttribute('data-theme', theme);
+                localStorage.setItem('theme', theme);
+                themeToggle.innerHTML = theme === 'light' ? '<i class="fas fa-moon"></i>' : '<i class="fas fa-sun"></i>';
+            }
+
+            lightbox.addEventListener('click', () => { lightbox.classList.remove('visible'); });
+            searchBtn.addEventListener('click', handleSearch);
+            codeInput.addEventListener('keypress', (event) => { if (event.key === "Enter") { searchBtn.click(); } });
+            themeToggle.addEventListener('click', () => {
+                const newTheme = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+                applyTheme(newTheme);
+            });
+
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            applyTheme(savedTheme);
+
+            const canvas = document.getElementById('background-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            let particles = [];
+            function createParticles() {
+                particles = [];
+                let numParticles = window.innerWidth > 768 ? 100 : 30;
+                for (let i = 0; i < numParticles; i++) {
+                    particles.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, size: Math.random() * 1.5 + 0.5, speedX: Math.random() * 0.4 - 0.2, speedY: Math.random() * 0.4 - 0.2 });
+                }
+            }
+            function animateParticles() {
+                if (ctx) {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    const currentTheme = document.documentElement.getAttribute('data-theme');
+                    ctx.fillStyle = (currentTheme === 'dark') ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.3)';
+                    particles.forEach(p => {
+                        p.x += p.speedX; p.y += p.speedY;
+                        if (p.x > canvas.width || p.x < 0) p.speedX *= -1;
+                        if (p.y > canvas.height || p.y < 0) p.speedY *= -1;
+                        ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+                    });
+                }
+                requestAnimationFrame(animateParticles);
+            }
+            window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; createParticles(); });
+            createParticles();
+            animateParticles();
+        });
+    </script>
+</body>
+</html>
